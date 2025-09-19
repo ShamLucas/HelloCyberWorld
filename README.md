@@ -21,28 +21,7 @@ Ce projet s’appuie sur un **workflow reproductible** :
 - staging sur un sous-domaine public (`test.hellocyberworld.com`),  
 - déploiement final sur un Raspberry Pi auto-hébergé.
 
----
-
-## 🏗️ Architecture & Stack technique
-
-```
-+---------------------+
-|    Poste local      |
-|---------------------|
-| VM Vagrant + Ansible| <-- provisionnée automatiquement
-| Ubuntu Server       |
-| Nginx, GitLab, etc. |
-+---------------------+
-
-          |
-          | Test via DNS public (test.hellocyberworld.com)
-          v
-
-+---------------------+
-|  Raspberry Pi       | <-- cible finale
-| Ubuntu, Docker, etc |
-+---------------------+
-```
+[Pour la configuration de vagrant et ansible, c'est ici](doc/ServerVagrantAnsible.md)
 
 ---
 

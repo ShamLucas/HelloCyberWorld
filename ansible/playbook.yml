@@ -1,0 +1,14 @@
+- hosts: dev
+  become: yes
+  tasks:
+    - name: Mettre à jour le cache APT
+      apt:
+        update_cache: yes
+
+    - name: Installer Git
+      apt:
+        name: git
+        state: present
+  roles:
+    - common
+    - nginx

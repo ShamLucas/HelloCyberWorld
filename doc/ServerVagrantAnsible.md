@@ -1,0 +1,311 @@
+# Mise en place de la stack Vagrant Ansible
+
+## 🏗️ Architecture
+
+```
++---------------------+
+|    Poste local      |
+|---------------------|
+| VM Vagrant + Ansible| <-- provisionnée automatiquement
+| Ubuntu Server       |
+| Nginx, GitLab, etc. |
++---------------------+
+
+          |
+          | Test via DNS public (test.hellocyberworld.com)
+          v
+
++---------------------+
+|  Raspberry Pi       | <-- cible finale
+| Ubuntu, Docker, etc |
++---------------------+
+```
+
+## Installation des prérequis :
+
+Installation de [brew](https://brew.sh/fr/)  (gestionnaire de packets pour mac os x) :
+
+ `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+
+Installation de virtualbox :
+
+`brew install --cask virtualbox`
+
+Installation de vagrant :
+
+```bash
+   brew tap hashicorp/tap
+   brew install hashicorp/tap/hashicorp-vagrant
+```
+
+Installation d'ansible :
+
+```bash
+brew install pipx
+pipx ensurepath
+pipx install ansible
+ansible --version
+```
+
+## Test vagrant - Lancement de la VM :
+
+Voici le contenu d'un fichier vagrant de base :
+
+```
+Vagrant.configure("2") do |config|
+  # Choix de l'image de base (ici Ubuntu 22.04)
+  config.vm.box = "ubuntu/jammy64"
+
+  # Nom de la VM
+  config.vm.hostname = "dev-hello-cyber-world"
+
+  # Réseau : accès par IP locale
+  config.vm.network "private_network", ip: "192.168.56.10"
+
+  # Synchroniser un dossier (ton code local <-> VM)
+  config.vm.synced_folder "./data", "/vagrant_data"
+
+  # Ressources
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"   # RAM
+    vb.cpus = 2          # Nombre de CPU
+  end
+end
+```
+
+On peut ensuite créer la machine et se connecter :
+
+```bash
+vagrant up
+vagrant ssh
+```
+
+Liste des commandes vagrant les plus courantes :
+
+```bash
+# Démarre la VM (la créé si elle n'existe pas)
+vagrant up 
+# Se connecter en ssh
+vagrant ssh
+# Arrêter la machine
+vagrant halt
+# Redémarrer la machine
+vagrant reload
+# Détruire la machine 
+vagrant destroy
+# Vérifier l’état des VM
+vagrant status
+# Lister toutes les VM Vagrant gérées
+vagrant global-status
+# Supprimer une VM du registre (si elle n’existe plus dans VirtualBox)
+vagrant global-status --prune
+# Provoquer un reprovisionnement (rejouer Ansible, Shell, etc.)
+vagrant provision
+```
+
+## 🛠 Introduction à Ansible et intégration avec Vagrant
+
+### 🔹 Les grands principes d’Ansible
+
+- **Agentless** : Ansible n’installe rien sur les machines cibles. Tout se fait via **SSH**.  
+- **Idempotent** : lancer deux fois le même playbook donne le même résultat → si un paquet est déjà installé, Ansible ne le réinstalle pas.  
+- **Déclaratif** : on décrit l’état final désiré (ex : “Docker doit être installé”), pas la suite de commandes.  
+- **Inventaire** : la liste des machines cibles est définie dans un fichier (`inventory.ini`).  
+- **Playbook** : fichier YAML qui décrit les tâches à appliquer sur les hôtes (ex : installer des paquets, copier des fichiers, configurer un service).  
+- **Modules** : briques réutilisables (ex : `apt`, `service`, `copy`) qui font le travail réel.  
+- **Rôles** : structure organisée (avec tâches, handlers, templates, variables) pour réutiliser du code facilement.
+
+---
+
+### 🔹 Comment lier Ansible à une VM Vagrant
+
+On créé un dossier ansible dans lequel on va créer un fichier inventory.ini et un fichier playbook.ini
+
+### 🔹 Structure recommandée
+
+```bash
+.
+├── Vagrantfile
+├── ansible/
+│   ├── inventory.ini
+│   ├── playbook.yml
+│   ├── roles/
+│   │   ├── common/
+│   │   │   ├── tasks/
+│   │   │   │   └── main.yml
+│   │   │   ├── handlers/
+│   │   │   │   └── main.yml
+│   │   │   ├── files/
+│   │   │   ├── templates/
+│   │   │   └── vars/
+│   │   │       └── main.yml
+│   │   └── docker/   # exemple de rôle spécifique
+│   │       └── tasks/
+│   │           └── main.yml
+│   └── group_vars/
+│       └── all.yml
+└── doc/
+    ├── vagrant.md
+    └── ansible.md
+
+```
+
+Quand on lance `vagrant up`, Vagrant crée automatiquement une VM avec :  
+- un utilisateur par défaut : **vagrant**  
+- une clé SSH privée stockée dans :  
+  `.vagrant/machines/default/virtualbox/private_key{}`
+
+Pour qu’Ansible gère cette machine, il suffit de la déclarer dans l’inventaire.
+
+### Exemple d’inventaire (`inventory.ini`)
+```ini
+[dev]
+192.168.56.10 ansible_user=vagrant ansible_private_key_file=../.vagrant/machines/default/virtualbox/private_key
+```
+
+ici :
+- 192.168.56.10 = IP privée définie dans le Vagrantfile
+- ansible_user=vagrant = l’utilisateur créé automatiquement par Vagrant
+- ansible_private_key_file = chemin vers la clé SSH générée par Vagrant
+
+### 🔹 Premier test de connexion
+Vérifier que Ansible arrive à se connecter à la VM :
+
+```bash
+ansible all -i inventory.ini -m ping
+```
+
+Résultat attendu :
+
+```json
+192.168.56.10 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+```
+
+### 🔹 Premier playbook
+
+Exemple simple (playbook.yml) :
+
+```bash
+- hosts: dev
+  become: yes
+  tasks:
+    - name: Mettre à jour le cache APT
+      apt:
+        update_cache: yes
+
+    - name: Installer Git
+      apt:
+        name: git
+        state: present
+```
+
+Exécution :
+
+ansible-playbook -i inventory.ini playbook.yml
+
+👉 Git est maintenant installé dans la VM Vagrant automatiquement.
+
+---
+
+## 🔹 Ajouter un rôle Nginx et tester l’accès depuis le Mac
+
+### 1. Création du rôle nginx
+
+Pour générer automatiquement la structure du rôle Nginx, utiliser la commande :
+
+```bash
+cd ansible
+ansible-galaxy init roles/nginx
+```
+
+Cela crée le dossier `roles/nginx` avec tous les sous-dossiers standards :
+
+```bash
+ansible/
+└── roles/
+    └── nginx/
+        ├── defaults/
+        ├── files/
+        ├── handlers/
+        ├── meta/
+        ├── tasks/
+        │   └── main.yml
+        ├── templates/
+        ├── tests/
+        └── vars/
+```
+
+On peux ensuite placer la configuration dans :
+- `tasks/main.yml` (installation et configuration de Nginx)
+- `templates/nginx.conf.j2` (configuration personnalisée de Nginx)
+
+**Exemple de fichier `tasks/main.yml` :**
+
+```yaml
+# ansible/roles/nginx/tasks/main.yml
+- name: Installer Nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Copier la configuration Nginx
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/default
+  notify: Restart nginx
+
+- name: S’assurer que Nginx est démarré
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+```
+
+**Exemple de template `nginx.conf.j2` :**
+
+```nginx
+# ansible/roles/nginx/templates/nginx.conf.j2
+server {
+    listen 80;
+    server_name dev.hellocyberworld.com;
+    root /var/www/html;
+    index index.html index.htm;
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+### 2. Modifier le playbook principal
+
+Ajouter le rôle nginx à ton `playbook.yml` :
+
+```yaml
+# ansible/playbook.yml
+- hosts: dev
+  become: yes
+  roles:
+    - common
+    - nginx
+```
+
+### 3. Tester l’accès depuis le Mac
+
+Ajouter dans le fichier `/etc/hosts` (sur le Mac) :
+
+```bash
+echo "192.168.56.10 dev.hellocyberworld.com" | sudo tee -a /etc/hosts
+```
+
+Puis, ouvre ton navigateur et visite :  
+`http://dev.hellocyberworld.com`
+
+On devrais voir la page par défaut de Nginx servie par ta VM Vagrant.
+
+---
+
+👉 Ton rôle Nginx est maintenant prêt à être testé et personnalisé !
