@@ -1,0 +1,21 @@
+# Vagrant
+.vagrant/
+*.box
+
+# Fichiers temporaires et logs
+*.log
+*.swp
+*.tmp
+
+# Clés SSH et secrets
+*.pem
+*.key
+*.id_rsa
+*.id_rsa.pub
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Dossiers de synchronisation (optionnel, si pas utile dans le dépôt)
+data/
