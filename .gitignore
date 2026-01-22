@@ -19,3 +19,6 @@ Thumbs.db
 
 # Dossiers de synchronisation (optionnel, si pas utile dans le dépôt)
 data/
+
+# Fichier mots de passe (si utilisé)
+HelloCyberWorld.kdbx

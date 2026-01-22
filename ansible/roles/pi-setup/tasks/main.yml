@@ -1,0 +1,158 @@
+---
+# tasks file for pi-setup
+# Ce rôle ne doit s'exécuter que sur un Raspberry Pi
+
+- name: Vérifier que nous sommes bien sur un Raspberry Pi
+  stat:
+    path: /proc/device-tree/model
+  register: device_tree
+
+- name: Lire le modèle du device
+  command: cat /proc/device-tree/model
+  register: device_model
+  changed_when: false
+  when: device_tree.stat.exists
+
+- name: Arrêter si ce n'est pas un Raspberry Pi
+  fail:
+    msg: "Ce rôle ne peut s'exécuter que sur un Raspberry Pi"
+  when: not device_tree.stat.exists or 'Raspberry Pi' not in device_model.stdout
+
+- name: S'assurer que le paquet rpi-eeprom est installé
+  apt:
+    name: rpi-eeprom
+    state: present
+    update_cache: yes
+
+- name: Mettre à jour le firmware EEPROM (bootloader)
+  command: rpi-eeprom-update -a
+  become: yes
+  register: eeprom_update
+  changed_when: "'*** INSTALLING' in eeprom_update.stdout"
+
+# Étape 1 : Détecter si le SSD est vierge ou déjà configuré
+- name: Détecter le périphérique SSD (généralement /dev/sda)
+  stat:
+    path: /dev/sda
+  register: ssd_device
+
+- name: Vérifier si le SSD a des partitions
+  shell: lsblk /dev/sda -o NAME,MOUNTPOINT | grep -q "/"
+  register: ssd_has_root
+  failed_when: false
+  changed_when: false
+  when: ssd_device.stat.exists
+
+- name: Afficher l'état du SSD
+  debug:
+    msg: >
+      {% if not ssd_device.stat.exists %}
+      Aucun SSD détecté sur /dev/sda
+      {% elif ssd_has_root.rc == 0 %}
+      Le SSD contient déjà un système (monté sur /)
+      {% else %}
+      Le SSD est présent mais semble vierge ou non monté sur /
+      {% endif %}
+
+# Étape 2 : Cloner la SD vers le SSD si nécessaire
+- name: Installer rsync si nécessaire
+  apt:
+    name: rsync
+    state: present
+  when: ssd_device.stat.exists and ssd_has_root.rc != 0
+
+- name: Créer une partition sur le SSD si vierge
+  shell: |
+    parted /dev/sda --script mklabel gpt mkpart primary ext4 0% 100%
+    mkfs.ext4 -F /dev/sda1
+  register: ssd_partitioned
+  when: ssd_device.stat.exists and ssd_has_root.rc != 0
+
+- name: Monter temporairement le SSD pour le clonage
+  mount:
+    path: /mnt/ssd
+    src: /dev/sda1
+    fstype: ext4
+    state: mounted
+  when: ssd_device.stat.exists and ssd_has_root.rc != 0
+
+- name: Cloner le système de la SD vers le SSD
+  shell: |
+    rsync -axHAWX --info=progress2 / /mnt/ssd/ \
+      --exclude=/mnt/* \
+      --exclude=/proc/* \
+      --exclude=/sys/* \
+      --exclude=/dev/* \
+      --exclude=/tmp/* \
+      --exclude=/run/* \
+      --exclude=/lost+found
+  async: 1800  # 30 minutes max
+  poll: 10
+  when: ssd_device.stat.exists and ssd_has_root.rc != 0
+
+- name: Mettre à jour /etc/fstab sur le SSD
+  lineinfile:
+    path: /mnt/ssd/etc/fstab
+    regexp: '^(PARTUUID|/dev/mmcblk0p2)\s+/\s+'
+    line: '/dev/sda1  /  ext4  defaults,noatime  0  1'
+  when: ssd_device.stat.exists and ssd_has_root.rc != 0
+
+- name: Mettre à jour cmdline.txt pour pointer vers le SSD
+  replace:
+    path: /boot/cmdline.txt
+    regexp: 'root=[^\s]+'
+    replace: 'root=/dev/sda1'
+  when: ssd_device.stat.exists and ssd_has_root.rc != 0
+
+- name: Démonter le SSD temporaire
+  mount:
+    path: /mnt/ssd
+    state: unmounted
+  when: ssd_device.stat.exists and ssd_has_root.rc != 0
+
+# Étape 3 : Configurer le boot order dans l'EEPROM
+- name: Vérifier la configuration actuelle du bootloader
+  command: rpi-eeprom-config
+  register: eeprom_config
+  changed_when: false
+
+- name: Afficher la configuration actuelle du bootloader
+  debug:
+    var: eeprom_config.stdout_lines
+
+- name: Modifier l'ordre de boot pour démarrer sur SSD (USB) en priorité
+  become: yes
+  shell: |
+    set -e
+    TMP=$(mktemp)
+    rpi-eeprom-config > "$TMP"
+    if ! grep -q "^BOOT_ORDER=0xf41" "$TMP"; then
+      sed -i 's/^BOOT_ORDER=.*/BOOT_ORDER=0xf41/' "$TMP" || echo "BOOT_ORDER=0xf41" >> "$TMP"
+      rpi-eeprom-config --apply "$TMP"
+      echo "Boot order updated to SSD first (0xf41)"
+    else
+      echo "Boot order already configured (0xf41)"
+    fi
+    rm -f "$TMP"
+  register: boot_order
+  changed_when: "'updated' in boot_order.stdout"
+
+- name: Vérification du périphérique racine actuel
+  command: mount | grep " / "
+  register: root_device
+  changed_when: false
+
+- name: Afficher le périphérique racine actuel
+  debug:
+    msg: "Système actuellement démarré sur {{ root_device.stdout }}"
+
+- name: Message final
+  debug:
+    msg: >
+      {% if ssd_has_root is defined and ssd_has_root.rc == 0 %}
+      ✅ Le système tourne déjà sur le SSD !
+      {% elif ssd_device.stat.exists %}
+      ⚠️  Le SSD a été configuré et le boot order modifié. REDÉMARRER le Pi pour booter sur le SSD.
+      {% else %}
+      ❌ Aucun SSD détecté. Vérifier la connexion du SSD au DeskPi Pro V2.
+      {% endif %}

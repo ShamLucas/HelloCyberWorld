@@ -1,4 +1,4 @@
-- hosts: dev
+- hosts: all
   become: yes
   tasks:
     - name: Mettre à jour le cache APT
@@ -12,3 +12,4 @@
   roles:
     - common
     - nginx
+    # - pi-setup
