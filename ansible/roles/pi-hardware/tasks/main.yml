@@ -1,6 +1,6 @@
 ---
-# tasks file for pi-setup
-# Ce rôle ne doit s'exécuter que sur un Raspberry Pi
+# Role pi-hardware : configuration materielle du Raspberry Pi
+# Ce role ne doit s'executer que sur un Raspberry Pi
 
 - name: Vérifier que nous sommes bien sur un Raspberry Pi
   stat:
@@ -86,7 +86,7 @@
       --exclude=/tmp/* \
       --exclude=/run/* \
       --exclude=/lost+found
-  async: 1800  # 30 minutes max
+  async: 1800
   poll: 10
   when: ssd_device.stat.exists and ssd_has_root.rc != 0
 
@@ -150,9 +150,9 @@
   debug:
     msg: >
       {% if ssd_has_root is defined and ssd_has_root.rc == 0 %}
-      ✅ Le système tourne déjà sur le SSD !
+      Le système tourne déjà sur le SSD !
       {% elif ssd_device.stat.exists %}
-      ⚠️  Le SSD a été configuré et le boot order modifié. REDÉMARRER le Pi pour booter sur le SSD.
+      Le SSD a été configuré et le boot order modifié. REDÉMARRER le Pi pour booter sur le SSD.
       {% else %}
-      ❌ Aucun SSD détecté. Vérifier la connexion du SSD au DeskPi Pro V2.
+      Aucun SSD détecté. Vérifier la connexion du SSD au DeskPi Pro V2.
       {% endif %}

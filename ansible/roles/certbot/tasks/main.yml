@@ -1,0 +1,27 @@
+---
+# Role certbot : obtention de certificats Let's Encrypt
+- name: Installer Certbot et le plugin Nginx
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: yes
+
+- name: Obtenir les certificats Let's Encrypt
+  command: >
+    certbot --nginx
+    -d {{ item }}
+    --non-interactive --agree-tos
+    --email {{ certbot_email }}
+    --redirect
+  args:
+    creates: "/etc/letsencrypt/live/{{ item }}/fullchain.pem"
+  loop: "{{ certbot_domains }}"
+  notify: Reload nginx
+
+- name: Verifier le timer de renouvellement automatique
+  systemd:
+    name: certbot.timer
+    state: started
+    enabled: yes

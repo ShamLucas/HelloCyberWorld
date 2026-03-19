@@ -1,15 +1,24 @@
-- hosts: all
+---
+# Play 1 : Configuration de base (tous les hotes)
+- name: Configuration de base
+  hosts: all
   become: yes
-  tasks:
-    - name: Mettre à jour le cache APT
-      apt:
-        update_cache: yes
-
-    - name: Installer Git
-      apt:
-        name: git
-        state: present
   roles:
     - common
+
+# Play 2 : Environnement dev (VM Vagrant)
+- name: Dev (Vagrant)
+  hosts: dev
+  become: yes
+  roles:
     - nginx
-    # - pi-setup
+
+# Play 3 : Production (Raspberry Pi)
+- name: Production (Raspberry Pi)
+  hosts: raspberrypi
+  become: yes
+  roles:
+    - pi-hardware
+    - nginx
+    - markdown-site
+    - certbot

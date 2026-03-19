@@ -1,0 +1,3 @@
+---
+# Variables pour l'environnement dev (VM Vagrant)
+nginx_server_name: dev.hellocyberworld.com

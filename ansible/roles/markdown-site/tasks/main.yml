@@ -1,0 +1,52 @@
+---
+# Role markdown-site : deploiement de pages markdown en HTML statique
+- name: Installer pandoc
+  apt:
+    name: pandoc
+    state: present
+
+- name: Creer les repertoires web
+  file:
+    path: "/var/www/{{ item.name }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  loop: "{{ markdown_sites }}"
+
+- name: Copier les fichiers source
+  copy:
+    src: "{{ playbook_dir }}/sites/{{ item.name }}/"
+    dest: "/tmp/markdown-site-{{ item.name }}/"
+  loop: "{{ markdown_sites }}"
+
+- name: Convertir markdown en HTML avec pandoc
+  command: >
+    pandoc /tmp/markdown-site-{{ item.name }}/{{ item.markdown_file }}
+    -o /var/www/{{ item.name }}/index.html
+    --standalone --embed-resources
+    --css /tmp/markdown-site-{{ item.name }}/{{ item.css_file }}
+    --metadata title="{{ item.title }}"
+  loop: "{{ markdown_sites }}"
+
+- name: Deployer les vhosts nginx
+  template:
+    src: nginx-vhost.conf.j2
+    dest: "/etc/nginx/sites-available/{{ item.domain }}"
+    force: no
+  loop: "{{ markdown_sites }}"
+  notify: Reload nginx
+
+- name: Activer les vhosts
+  file:
+    src: "/etc/nginx/sites-available/{{ item.domain }}"
+    dest: "/etc/nginx/sites-enabled/{{ item.domain }}"
+    state: link
+  loop: "{{ markdown_sites }}"
+  notify: Reload nginx
+
+- name: Nettoyer les fichiers temporaires
+  file:
+    path: "/tmp/markdown-site-{{ item.name }}"
+    state: absent
+  loop: "{{ markdown_sites }}"

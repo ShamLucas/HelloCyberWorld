@@ -1,0 +1,17 @@
+---
+# Variables pour la production (Raspberry Pi)
+nginx_server_name: hellocyberworld.com
+
+# Sites markdown a deployer
+markdown_sites:
+  - name: julie
+    domain: julie.hellocyberworld.com
+    title: "Pour Julie"
+    markdown_file: julie.md
+    css_file: julie.css
+
+# Certbot - certificats HTTPS
+certbot_email: lucas@hellocyberworld.com
+certbot_domains:
+  - hellocyberworld.com
+  - julie.hellocyberworld.com

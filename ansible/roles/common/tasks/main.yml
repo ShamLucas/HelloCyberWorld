@@ -1,0 +1,13 @@
+---
+# Role common : paquets et configuration de base
+- name: Mettre a jour le cache APT
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Installer les paquets de base
+  apt:
+    name:
+      - git
+      - curl
+    state: present
