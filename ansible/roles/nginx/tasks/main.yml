@@ -1,6 +1,16 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # tasks file for roles/nginx
+- name: Collecter la liste des services
+  service_facts:
+
+- name: Arreter Apache si present (conflit avec le port 80)
+  service:
+    name: apache2
+    state: stopped
+    enabled: no
+  when: "'apache2.service' in ansible_facts.services"
+
 - name: Installer Nginx
   apt:
     name: nginx

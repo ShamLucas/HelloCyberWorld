@@ -18,7 +18,17 @@
   hosts: raspberrypi
   become: yes
   roles:
-    - pi-hardware
+    # - pi-hardware  # Activer quand un SSD sera installé dans le DeskPi Pro V2
+    - nginx
+    - markdown-site
+    # Certbot est gere uniquement sur HP Envy pour eviter les conflits de challenge TLS.
+
+# Play 4 : Production (HP Envy Debian)
+- name: Production (HP Envy Debian)
+  hosts: hp_envy
+  become: yes
+  roles:
+    - hp-envy
     - nginx
     - markdown-site
     - certbot

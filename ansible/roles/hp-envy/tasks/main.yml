@@ -1,0 +1,53 @@
+---
+# Role hp-envy : reglages specifiques au portable HP Envy
+
+- name: Creer le repertoire des overrides logind
+  file:
+    path: /etc/systemd/logind.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Desactiver la veille a la fermeture du capot
+  copy:
+    dest: /etc/systemd/logind.conf.d/10-no-lid-sleep.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Login]
+      HandleLidSwitch=ignore
+      HandleLidSwitchExternalPower=ignore
+      HandleLidSwitchDocked=ignore
+  notify: Restart systemd-logind
+  when: hp_envy_disable_lid_suspend | bool
+
+- name: Bloquer la veille au niveau systemd
+  systemd:
+    name: "{{ item }}"
+    masked: yes
+  loop:
+    - sleep.target
+    - suspend.target
+    - hibernate.target
+    - hybrid-sleep.target
+  when: hp_envy_disable_lid_suspend | bool
+
+- name: Supprimer l'override si la veille capot est activee
+  file:
+    path: /etc/systemd/logind.conf.d/10-no-lid-sleep.conf
+    state: absent
+  notify: Restart systemd-logind
+  when: not hp_envy_disable_lid_suspend | bool
+
+- name: Reautoriser la veille au niveau systemd
+  systemd:
+    name: "{{ item }}"
+    masked: no
+  loop:
+    - sleep.target
+    - suspend.target
+    - hibernate.target
+    - hybrid-sleep.target
+  when: not hp_envy_disable_lid_suspend | bool

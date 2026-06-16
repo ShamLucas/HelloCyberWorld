@@ -1,0 +1,3 @@
+---
+# Parametres par defaut pour HP Envy
+hp_envy_disable_lid_suspend: true
