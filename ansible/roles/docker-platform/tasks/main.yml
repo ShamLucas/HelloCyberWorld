@@ -1,0 +1,202 @@
+---
+# Role docker-platform: socle Docker + Portainer + Open WebUI + backup
+
+- name: Installer Docker
+  apt:
+    name:
+      - docker.io
+    state: present
+    update_cache: yes
+
+- name: Tenter d'installer les paquets Compose connus
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - docker-compose-plugin
+    - docker-compose-v2
+    - docker-compose
+  register: docker_compose_pkg_install
+  failed_when: false
+
+- name: Activer et demarrer Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  when: not ansible_check_mode
+
+- name: S'assurer que le groupe docker existe
+  group:
+    name: docker
+    state: present
+  when: not ansible_check_mode
+
+- name: Ajouter les utilisateurs au groupe docker
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop: "{{ docker_users }}"
+  when: not ansible_check_mode
+
+- name: Creer l'arborescence Docker
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - "{{ docker_base_dir }}"
+    - "{{ docker_services_dir }}"
+    - "{{ docker_services_dir }}/portainer"
+    - "{{ docker_services_dir }}/openwebui"
+    - "{{ docker_backups_dir }}"
+    - "{{ docker_scripts_dir }}"
+
+- name: Verifier si le reseau Docker interne existe
+  command: docker network inspect {{ docker_network_name }}
+  register: docker_network_check
+  failed_when: false
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Creer le reseau Docker interne
+  command: docker network create {{ docker_network_name }}
+  when:
+    - not ansible_check_mode
+    - docker_network_check.rc != 0
+
+- name: Verifier la disponibilite de Docker Compose v2
+  command: docker compose version
+  register: docker_compose_v2_check
+  failed_when: false
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Verifier la disponibilite de docker-compose
+  command: docker-compose version
+  register: docker_compose_v1_check
+  failed_when: false
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Definir la commande compose a utiliser
+  set_fact:
+    docker_compose_cmd: "{{ 'docker compose' if docker_compose_v2_check.rc == 0 else 'docker-compose' }}"
+  when: not ansible_check_mode
+
+- name: Echouer si aucune commande Compose n'est disponible
+  fail:
+    msg: >
+      Ni "docker compose" ni "docker-compose" n'est disponible sur la cible.
+      Verifier l'installation de Docker Compose (plugin v2 recommande).
+  when:
+    - not ansible_check_mode
+    - docker_compose_v2_check.rc != 0
+    - docker_compose_v1_check.rc != 0
+
+- name: Definir la commande compose en fallback v1
+  set_fact:
+    docker_compose_cmd: docker-compose
+  when:
+    - not ansible_check_mode
+    - docker_compose_v2_check.rc != 0
+    - docker_compose_v1_check.rc == 0
+
+- name: Deployer la stack Portainer
+  template:
+    src: portainer-compose.yml.j2
+    dest: "{{ docker_services_dir }}/portainer/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  when: portainer_enabled | bool
+
+- name: Deployer la stack Open WebUI
+  template:
+    src: openwebui-compose.yml.j2
+    dest: "{{ docker_services_dir }}/openwebui/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  when: openwebui_enabled | bool
+
+- name: Lancer la stack Portainer
+  shell: "{{ docker_compose_cmd }} up -d"
+  args:
+    chdir: "{{ docker_services_dir }}/portainer"
+  when:
+    - not ansible_check_mode
+    - portainer_enabled | bool
+
+- name: Lancer la stack Open WebUI
+  shell: "{{ docker_compose_cmd }} up -d"
+  args:
+    chdir: "{{ docker_services_dir }}/openwebui"
+  when:
+    - not ansible_check_mode
+    - openwebui_enabled | bool
+
+- name: Deployer le vhost Nginx Portainer
+  template:
+    src: nginx-portainer.conf.j2
+    dest: "/etc/nginx/sites-available/{{ portainer_domain }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload nginx
+  when:
+    - portainer_enabled | bool
+    - portainer_domain | length > 0
+
+- name: Activer le vhost Nginx Portainer
+  file:
+    src: "/etc/nginx/sites-available/{{ portainer_domain }}"
+    dest: "/etc/nginx/sites-enabled/{{ portainer_domain }}"
+    state: link
+  notify: Reload nginx
+  when:
+    - portainer_enabled | bool
+    - portainer_domain | length > 0
+
+- name: Deployer le vhost Nginx Open WebUI
+  template:
+    src: nginx-openwebui.conf.j2
+    dest: "/etc/nginx/sites-available/{{ openwebui_domain }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload nginx
+  when:
+    - openwebui_enabled | bool
+    - openwebui_domain | length > 0
+
+- name: Activer le vhost Nginx Open WebUI
+  file:
+    src: "/etc/nginx/sites-available/{{ openwebui_domain }}"
+    dest: "/etc/nginx/sites-enabled/{{ openwebui_domain }}"
+    state: link
+  notify: Reload nginx
+  when:
+    - openwebui_enabled | bool
+    - openwebui_domain | length > 0
+
+- name: Installer le script de backup Docker
+  template:
+    src: backup-docker-volumes.sh.j2
+    dest: "{{ docker_scripts_dir }}/backup-docker-volumes.sh"
+    owner: root
+    group: root
+    mode: '0755'
+  when: docker_backup_enabled | bool
+
+- name: Configurer un backup quotidien des volumes Docker
+  cron:
+    name: "HelloCyberWorld Docker backup"
+    user: root
+    minute: "30"
+    hour: "3"
+    job: "{{ docker_scripts_dir }}/backup-docker-volumes.sh"
+  when: docker_backup_enabled | bool

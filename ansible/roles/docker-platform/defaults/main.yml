@@ -1,0 +1,33 @@
+---
+# Base paths
+docker_base_dir: /opt/hellocyberworld
+docker_services_dir: "{{ docker_base_dir }}/services"
+docker_backups_dir: "{{ docker_base_dir }}/backups/docker-volumes"
+docker_scripts_dir: "{{ docker_base_dir }}/scripts"
+
+# Docker runtime settings
+docker_users: []
+docker_network_name: hcw_internal
+
+# Portainer
+portainer_enabled: true
+portainer_domain: ""
+portainer_bind_address: 127.0.0.1
+portainer_host_port: 9000
+portainer_image: portainer/portainer-ce:2.27.9
+portainer_volume_name: hcw_portainer_data
+
+# Open WebUI
+openwebui_enabled: true
+openwebui_domain: ""
+openwebui_bind_address: 127.0.0.1
+openwebui_host_port: 3000
+openwebui_image: ghcr.io/open-webui/open-webui:main
+openwebui_volume_name: hcw_openwebui_data
+
+# Backups
+docker_backup_enabled: true
+docker_backup_retention_days: 7
+docker_backup_volumes:
+  - "{{ portainer_volume_name }}"
+  - "{{ openwebui_volume_name }}"

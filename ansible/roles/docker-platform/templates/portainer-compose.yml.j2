@@ -1,0 +1,21 @@
+services:
+  portainer:
+    image: {{ portainer_image }}
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "{{ portainer_bind_address }}:{{ portainer_host_port }}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - internal
+
+volumes:
+  portainer_data:
+    name: {{ portainer_volume_name }}
+
+networks:
+  internal:
+    external: true
+    name: {{ docker_network_name }}
