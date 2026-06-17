@@ -12,6 +12,10 @@ docker_users:
 portainer_domain: portainer.hellocyberworld.com
 openwebui_domain: openwebui.hellocyberworld.com
 openwebui_host_port: 3000
+hermes_domain: hermes.hellocyberworld.com
+hermes_host_port: 8642
+hermes_api_server_key: V4SiesN41f7VL51X
+hermes_api_server_cors_origins: https://openwebui.hellocyberworld.com
 
 # Sites markdown a deployer
 markdown_sites:
@@ -28,3 +32,4 @@ certbot_domains:
   - julie.hellocyberworld.com
   - portainer.hellocyberworld.com
   - openwebui.hellocyberworld.com
+  - hermes.hellocyberworld.com

@@ -1,6 +1,17 @@
 ---
 # Role hp-envy : reglages specifiques au portable HP Envy
 
+- name: Autoriser lucas a utiliser sudo sans mot de passe
+  copy:
+    dest: /etc/sudoers.d/lucas-nopasswd
+    content: |
+      lucas ALL=(ALL) NOPASSWD: ALL
+    owner: root
+    group: root
+    mode: '0440'
+    validate: '/usr/sbin/visudo -cf %s'
+  when: hp_envy_passwordless_sudo | bool
+
 - name: Creer le repertoire des overrides logind
   file:
     path: /etc/systemd/logind.conf.d

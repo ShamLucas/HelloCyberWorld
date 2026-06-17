@@ -1,0 +1,29 @@
+services:
+  hermes:
+    image: {{ hermes_image }}
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway run
+    ports:
+      - "{{ hermes_bind_address }}:{{ hermes_host_port }}:8642"
+    volumes:
+      - hermes_data:/opt/data
+    environment:
+      - API_SERVER_ENABLED={{ hermes_api_server_enabled | ternary('true', 'false') }}
+      - API_SERVER_HOST={{ hermes_api_server_host }}
+      - API_SERVER_PORT={{ hermes_api_server_port }}
+      - API_SERVER_KEY={{ hermes_api_server_key }}
+{% if hermes_api_server_cors_origins | length > 0 %}
+      - API_SERVER_CORS_ORIGINS={{ hermes_api_server_cors_origins }}
+{% endif %}
+    networks:
+      - internal
+
+volumes:
+  hermes_data:
+    name: {{ hermes_volume_name }}
+
+networks:
+  internal:
+    external: true
+    name: {{ docker_network_name }}

@@ -52,8 +52,16 @@
     - "{{ docker_services_dir }}"
     - "{{ docker_services_dir }}/portainer"
     - "{{ docker_services_dir }}/openwebui"
+    - "{{ docker_services_dir }}/hermes"
     - "{{ docker_backups_dir }}"
     - "{{ docker_scripts_dir }}"
+
+- name: Verifier la configuration API Hermes
+  assert:
+    that:
+      - hermes_api_server_key | length >= 8
+    fail_msg: "hermes_api_server_key doit contenir au moins 8 caracteres."
+  when: hermes_enabled | bool
 
 - name: Verifier si le reseau Docker interne existe
   command: docker network inspect {{ docker_network_name }}
@@ -123,6 +131,15 @@
     mode: '0644'
   when: openwebui_enabled | bool
 
+- name: Deployer la stack Hermes
+  template:
+    src: hermes-compose.yml.j2
+    dest: "{{ docker_services_dir }}/hermes/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  when: hermes_enabled | bool
+
 - name: Lancer la stack Portainer
   shell: "{{ docker_compose_cmd }} up -d"
   args:
@@ -138,6 +155,14 @@
   when:
     - not ansible_check_mode
     - openwebui_enabled | bool
+
+- name: Lancer la stack Hermes
+  shell: "{{ docker_compose_cmd }} up -d"
+  args:
+    chdir: "{{ docker_services_dir }}/hermes"
+  when:
+    - not ansible_check_mode
+    - hermes_enabled | bool
 
 - name: Deployer le vhost Nginx Portainer
   template:
@@ -182,6 +207,28 @@
   when:
     - openwebui_enabled | bool
     - openwebui_domain | length > 0
+
+- name: Deployer le vhost Nginx Hermes
+  template:
+    src: nginx-hermes.conf.j2
+    dest: "/etc/nginx/sites-available/{{ hermes_domain }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload nginx
+  when:
+    - hermes_enabled | bool
+    - hermes_domain | length > 0
+
+- name: Activer le vhost Nginx Hermes
+  file:
+    src: "/etc/nginx/sites-available/{{ hermes_domain }}"
+    dest: "/etc/nginx/sites-enabled/{{ hermes_domain }}"
+    state: link
+  notify: Reload nginx
+  when:
+    - hermes_enabled | bool
+    - hermes_domain | length > 0
 
 - name: Installer le script de backup Docker
   template:
