@@ -22,3 +22,6 @@ data/
 
 # Fichier mots de passe (si utilisé)
 HelloCyberWorld.kdbx
+
+# Directives Claude Code locales (contenu personnel, repo public)
+CLAUDE.local.md
