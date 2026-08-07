@@ -10,4 +10,16 @@
     name:
       - git
       - curl
+      - nodejs
+      - npm
     state: present
+
+- name: Verifier si Claude Code est deja installe globalement
+  command: npm list -g @anthropic-ai/claude-code --depth=0
+  register: claude_code_npm_check
+  failed_when: false
+  changed_when: false
+
+- name: Installer Claude Code globalement
+  command: npm install -g @anthropic-ai/claude-code
+  when: claude_code_npm_check.rc != 0

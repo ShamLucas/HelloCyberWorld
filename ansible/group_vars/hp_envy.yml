@@ -5,6 +5,12 @@ nginx_server_name: hellocyberworld.com
 # Desactive la mise en veille quand le capot est ferme
 hp_envy_disable_lid_suspend: true
 
+# Docker platform
+docker_users:
+  - lucas
+
+portainer_domain: portainer.hellocyberworld.com
+
 # Sites markdown a deployer
 markdown_sites:
   - name: julie
@@ -18,3 +24,4 @@ certbot_email: lucas@hellocyberworld.com
 certbot_domains:
   - hellocyberworld.com
   - julie.hellocyberworld.com
+  - portainer.hellocyberworld.com

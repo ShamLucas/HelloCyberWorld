@@ -20,6 +20,15 @@
   loop: "{{ certbot_domains }}"
   notify: Reload nginx
 
+- name: Installer la configuration Nginx pour les certificats existants
+  command: >
+    certbot install --nginx
+    --cert-name {{ item }}
+    --non-interactive
+    --redirect
+  loop: "{{ certbot_domains }}"
+  notify: Reload nginx
+
 - name: Verifier le timer de renouvellement automatique
   systemd:
     name: certbot.timer

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+backup_root="{{ docker_backups_dir }}"
+retention_days="{{ docker_backup_retention_days }}"
+timestamp="$(date +%F_%H%M%S)"
+
+mkdir -p "$backup_root"
+
+for volume in {% for v in docker_backup_volumes %}{{ v }} {% endfor %}; do
+  archive_name="${volume}_${timestamp}.tar.gz"
+
+  docker run --rm \
+    -v "${volume}:/volume:ro" \
+    -v "${backup_root}:/backup" \
+    alpine:3.20 \
+    sh -c "tar -czf /backup/${archive_name} -C /volume ."
+done
+
+find "$backup_root" -type f -name '*.tar.gz' -mtime +"$retention_days" -delete
