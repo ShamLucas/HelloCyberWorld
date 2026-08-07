@@ -17,31 +17,8 @@ portainer_host_port: 9000
 portainer_image: portainer/portainer-ce:2.27.9
 portainer_volume_name: hcw_portainer_data
 
-# Open WebUI
-openwebui_enabled: true
-openwebui_domain: ""
-openwebui_bind_address: 127.0.0.1
-openwebui_host_port: 3000
-openwebui_image: ghcr.io/open-webui/open-webui:main
-openwebui_volume_name: hcw_openwebui_data
-
-# Hermes Agent
-hermes_enabled: true
-hermes_domain: ""
-hermes_bind_address: 127.0.0.1
-hermes_host_port: 8642
-hermes_image: nousresearch/hermes-agent:latest
-hermes_volume_name: hcw_hermes_data
-hermes_api_server_enabled: true
-hermes_api_server_host: 0.0.0.0
-hermes_api_server_port: 8642
-hermes_api_server_key: ""
-hermes_api_server_cors_origins: ""
-
 # Backups
 docker_backup_enabled: true
 docker_backup_retention_days: 7
 docker_backup_volumes:
   - "{{ portainer_volume_name }}"
-  - "{{ openwebui_volume_name }}"
-  - "{{ hermes_volume_name }}"
