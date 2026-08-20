@@ -14,16 +14,15 @@ L'idée est aussi de créer un modèle de projet type pour scripter l'installati
   - [Vagrant](https://www.vagrantup.com/) pour gérer l’environnement de dev local
   - [Ansible](https://www.ansible.com/) pour la configuration automatique des services et déployer soit sur la vm pour les test, soit en production.
   
-- **Services à tester** :
+- **Services déployés** :
   - [x] Nginx (reverse proxy)
-  - [ ] GitLab CE (hébergement de code)
-  - [ ] Serveur mail (type Mailu ou Poste.io)
-  - [ ] Moteur de blog Ghost
-  - [ ] Outils annexes (gestionnaire de documents, etc.)
-  
-- **Nom de domaine** : `hellocyberworld.com`
-  - Sous-domaine de staging : `test.hellocyberworld.com`
-  - DNS gérés via OVH
+  - [x] HTTPS via Certbot (certificats Let's Encrypt, renouvellement automatique)
+  - [x] Socle Docker + Portainer, avec sauvegarde des volumes
+  - [x] Publication de pages Markdown en HTML statique (pandoc)
+  - [ ] GitLab CE (hébergement de code)
+  - [ ] Serveur mail (type Mailu ou Poste.io)
+  - [ ] Moteur de blog Ghost
+  - [ ] Outils annexes (gestionnaire de documents, etc.)
 
 ---
 
@@ -58,14 +57,15 @@ vagrant up         # Démarre la VM et la provisionne avec Ansible
 
 Une fois le déploiement validé localement, les mêmes rôles Ansible seront utilisés pour :
 
-- déployer sur un VPS (ou ton Pi connecté en IP publique)
-- tester depuis `test.hellocyberworld.com`
+- déployer sur un VPS (ou un Raspberry Pi connecté en IP publique)
+- tester depuis le sous-domaine de staging
 
 ---
 
 ## 🚀 Déploiement final (Raspberry Pi)
 
-Tu trouveras dans `ansible/inventory/raspberry` la configuration dédiée à la cible Raspberry Pi.
+Les cibles sont décrites dans `ansible/inventory.ini`, et leurs variables
+(domaines, certificats, services) dans `ansible/group_vars/`.
 
 ---
 
