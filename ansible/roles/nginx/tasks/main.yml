@@ -31,7 +31,7 @@
 
 - name: Créer une page d'accueil personnalisée
   copy:
-    content: '<h1>Hello from HelloCyberWorld!</h1><p>Kem, i love you!</p>'
+    content: '<h1>Hello from HelloCyberWorld!</h1><p>Serveur provisionné avec Ansible.</p>'
     dest: /var/www/html/index.html
     owner: www-data
     group: www-data
