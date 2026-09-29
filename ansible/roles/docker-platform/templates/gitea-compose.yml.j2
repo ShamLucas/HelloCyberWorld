@@ -1,0 +1,27 @@
+services:
+  gitea:
+    image: {{ gitea_image }}
+    container_name: gitea
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__DISABLE_SSH=true
+      - GITEA__server__ROOT_URL=http://localhost:3000/
+    ports:
+      - "{{ gitea_bind_address }}:{{ gitea_host_port }}:3000"
+    volumes:
+      - gitea_data:/data
+    networks:
+      - internal
+
+volumes:
+  gitea_data:
+    name: {{ gitea_volume_name }}
+
+networks:
+  internal:
+    external: true
+    name: {{ docker_network_name }}
+

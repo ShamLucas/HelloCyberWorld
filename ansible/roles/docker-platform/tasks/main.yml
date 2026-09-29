@@ -51,6 +51,7 @@
     - "{{ docker_base_dir }}"
     - "{{ docker_services_dir }}"
     - "{{ docker_services_dir }}/portainer"
+    - "{{ docker_services_dir }}/gitea"
     - "{{ docker_backups_dir }}"
     - "{{ docker_scripts_dir }}"
 
@@ -120,6 +121,23 @@
   when:
     - not ansible_check_mode
     - portainer_enabled | bool
+
+- name: Deployer la stack Gitea
+  template:
+    src: gitea-compose.yml.j2
+    dest: "{{ docker_services_dir }}/gitea/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  when: gitea_enabled | bool
+
+- name: Lancer la stack Gitea
+  shell: "{{ docker_compose_cmd }} up -d"
+  args:
+    chdir: "{{ docker_services_dir }}/gitea"
+  when:
+    - not ansible_check_mode
+    - gitea_enabled | bool
 
 - name: Deployer le vhost Nginx Portainer
   template:

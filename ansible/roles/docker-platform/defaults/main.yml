@@ -17,8 +17,16 @@ portainer_host_port: 9000
 portainer_image: portainer/portainer-ce:2.27.9
 portainer_volume_name: hcw_portainer_data
 
+# Gitea
+gitea_enabled: true
+gitea_bind_address: 127.0.0.1
+gitea_host_port: 3000
+gitea_image: gitea/gitea:1.27.3
+gitea_volume_name: hcw_gitea_data
+
 # Backups
 docker_backup_enabled: true
 docker_backup_retention_days: 7
 docker_backup_volumes:
   - "{{ portainer_volume_name }}"
+  - "{{ gitea_volume_name }}"
