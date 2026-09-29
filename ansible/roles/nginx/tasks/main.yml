@@ -17,6 +17,11 @@
     state: present
     update_cache: yes
 
+- name: Verifier si le certificat existe
+  stat: 
+    path: /etc/letsencrypt/live/{{ nginx_server_name }}/fullchain.pem
+  register: nginx_cert
+
 - name: Copier la configuration Nginx
   template:
     src: nginx.conf.j2

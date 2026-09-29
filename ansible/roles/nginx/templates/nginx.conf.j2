@@ -1,5 +1,11 @@
 server {
+{% if nginx_cert.stat.exists %}
+    listen 443 ssl;
+    ssl_certificate     /etc/letsencrypt/live/{{ nginx_server_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ nginx_server_name }}/privkey.pem;
+{% else %}
     listen 80;
+{% endif %}
     server_name {{ nginx_server_name }};
     root /var/www/html;
     index index.html index.htm;
@@ -7,3 +13,10 @@ server {
         try_files $uri $uri/ =404;
     }
 }
+{% if nginx_cert.stat.exists %}
+server {
+    listen 80;
+    server_name {{ nginx_server_name }};
+    return 301 https://$host$request_uri;
+}
+{% endif %}
